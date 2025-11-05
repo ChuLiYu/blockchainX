@@ -1,0 +1,122 @@
+name: Twitter Bot - Auto Post News
+
+on:
+  schedule:
+    # Post tweets 3 times daily: 09:00, 15:00, 21:00 UTC
+    - cron: "0 9 * * *" # 9 AM UTC
+    - cron: "0 15 * * *" # 3 PM UTC
+    - cron: "0 21 * * *" # 9 PM UTC
+
+  workflow_dispatch: # Allow manual triggering
+    inputs:
+      force_post:
+        description: "Force posting even if daily limit reached"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  post-to-twitter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create config from secrets
+        run: |
+          # Create config.json from GitHub secrets
+          cat > config.json <<EOF
+          {
+            "translation": {
+              "service": "${{ secrets.TRANSLATION_SERVICE || 'openai' }}",
+              "target_language": "${{ secrets.TARGET_LANGUAGE || 'en' }}",
+              "openai_api_key": "${{ secrets.OPENAI_API_KEY }}",
+              "openai_model": "${{ secrets.OPENAI_MODEL || 'gpt-3.5-turbo' }}",
+              "deepl_api_key": "${{ secrets.DEEPL_API_KEY }}",
+              "google_api_key": "${{ secrets.GOOGLE_TRANSLATE_API_KEY }}"
+            },
+            "twitter": {
+              "api_key": "${{ secrets.TWITTER_API_KEY }}",
+              "api_secret": "${{ secrets.TWITTER_API_SECRET }}",
+              "access_token": "${{ secrets.TWITTER_ACCESS_TOKEN }}",
+              "access_secret": "${{ secrets.TWITTER_ACCESS_SECRET }}",
+              "bearer_token": "${{ secrets.TWITTER_BEARER_TOKEN }}"
+            },
+            "posting": {
+              "articles_per_run": ${{ secrets.ARTICLES_PER_RUN || 3 }},
+              "max_daily_tweets": ${{ secrets.MAX_DAILY_TWEETS || 10 }},
+              "delay_between_posts": ${{ secrets.DELAY_BETWEEN_POSTS || 30 }}
+            }
+          }
+          EOF
+          echo "✅ Configuration created"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ secrets.COMMITTER_NAME || github.actor }}"
+          git config --global user.email "${{ secrets.COMMITTER_EMAIL || format('{0}@users.noreply.github.com', github.actor) }}"
+
+      - name: Run Twitter bot
+        id: twitter_bot
+        run: |
+          echo "🐦 Starting Twitter bot..."
+          python twitter_bot.py
+          echo "bot_completed=true" >> $GITHUB_OUTPUT
+        env:
+          FORCE_POST: ${{ github.event.inputs.force_post || 'false' }}
+
+      - name: Commit history updates
+        if: steps.twitter_bot.outputs.bot_completed == 'true'
+        run: |
+          git add data/.twitter_history.json
+
+          if git diff --staged --quiet; then
+            echo "ℹ️  No history changes to commit"
+          else
+            CURRENT_TIME=$(date +'%Y-%m-%d %H:%M:%S')
+            git commit -m "🐦 Twitter bot history update: $CURRENT_TIME" \
+                       -m "Automated tweet posting completed"
+            
+            # Push with retry logic
+            max_retries=3
+            retry_count=0
+            until git push origin main || [ $retry_count -eq $max_retries ]; do
+              retry_count=$((retry_count + 1))
+              echo "⚠️  Push failed, retrying ($retry_count/$max_retries)..."
+              sleep 5
+              git pull --rebase origin main
+            done
+            
+            echo "✅ History committed and pushed"
+          fi
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "================================"
+          echo "📊 Twitter Bot Summary"
+          echo "================================"
+          echo "Date: $(date +'%Y-%m-%d')"
+          echo "Time: $(date +'%H:%M:%S UTC')"
+          echo "Status: ${{ steps.twitter_bot.outputs.bot_completed }}"
+          echo "================================"

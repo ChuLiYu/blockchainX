@@ -1,0 +1,26 @@
+{
+  "translation": {
+    "service": "openai",
+    "target_language": "en",
+    "openai_api_key": "YOUR_OPENAI_API_KEY_HERE",
+    "openai_model": "gpt-3.5-turbo",
+    "deepl_api_key": "",
+    "google_api_key": ""
+  },
+  "twitter": {
+    "api_key": "YOUR_TWITTER_API_KEY",
+    "api_secret": "YOUR_TWITTER_API_SECRET",
+    "access_token": "YOUR_TWITTER_ACCESS_TOKEN",
+    "access_secret": "YOUR_TWITTER_ACCESS_SECRET",
+    "bearer_token": "YOUR_TWITTER_BEARER_TOKEN"
+  },
+  "posting": {
+    "articles_per_run": 3,
+    "max_daily_tweets": 10,
+    "delay_between_posts": 30,
+    "schedule": {
+      "enabled": true,
+      "times": ["09:00", "15:00", "21:00"]
+    }
+  }
+}

@@ -1,0 +1,69 @@
+GitHub Repository Setup Guide
+==============================
+
+Repository Name: blockchainX
+Description: Automated blockchain news scraper with AI translation and Twitter bot
+Topics: blockchain, cryptocurrency, automation, github-actions, twitter-bot, ai-translation, news-scraper, python
+
+Visibility: Public (recommended) or Private
+
+About Section:
+--------------
+Automated blockchain news collection with AI-powered translation and Twitter distribution.
+
+Topics (click "Add topics"):
+- blockchain
+- cryptocurrency  
+- news-scraper
+- twitter-bot
+- github-actions
+- automation
+- ai-translation
+- python
+- web-scraping
+- coindesk
+
+Social Preview Image:
+--------------------
+Optional: Add a 1280x640px image showing the project
+
+Features to Enable:
+------------------
+✅ Issues
+✅ Discussions (optional)
+✅ Wiki (optional)
+✅ Actions (required)
+
+Branch Protection:
+-----------------
+Not needed initially - workflows will commit to main branch
+
+Secrets to Add (Settings → Secrets and variables → Actions):
+-----------------------------------------------------------
+Required for News Collection:
+- PAT_TOKEN (GitHub Personal Access Token)
+- COMMITTER_NAME (Your name)
+- COMMITTER_EMAIL (Your email)
+
+Optional for Twitter Bot:
+- TWITTER_API_KEY
+- TWITTER_API_SECRET
+- TWITTER_ACCESS_TOKEN
+- TWITTER_ACCESS_SECRET
+- TWITTER_BEARER_TOKEN
+- OPENAI_API_KEY (or DEEPL_API_KEY or GOOGLE_TRANSLATE_API_KEY)
+- TRANSLATION_SERVICE (openai/deepl/google)
+
+After First Push:
+----------------
+1. Go to Actions tab
+2. Enable workflows
+3. Run "Daily Blockchain News Collection" manually to test
+4. Check contribution graph after first successful run
+
+Security Notes:
+--------------
+✅ config.json is in .gitignore (never commit API keys)
+✅ All sensitive data uses GitHub Secrets
+✅ Workflows use minimal required permissions
+✅ No hardcoded credentials in code

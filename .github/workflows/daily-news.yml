@@ -1,0 +1,130 @@
+name: Daily Blockchain News Collection
+
+on:
+  schedule:
+    # Run at 00:00, 08:00, and 16:00 UTC every day (multiple times for richer contribution graph)
+    - cron: '0 0 * * *'   # Midnight UTC
+    - cron: '0 8 * * *'   # 8 AM UTC
+    - cron: '0 16 * * *'  # 4 PM UTC
+  
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      multiple_commits:
+        description: 'Generate multiple commits throughout the day'
+        required: false
+        default: 'false'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  collect-news:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ secrets.COMMITTER_NAME || github.actor }}"
+          git config --global user.email "${{ secrets.COMMITTER_EMAIL || format('{0}@users.noreply.github.com', github.actor) }}"
+      
+      - name: Run news collection script
+        id: collect
+        run: |
+          echo "🚀 Starting news collection..."
+          python scraper.py
+          echo "collection_time=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git add data/
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No new data to commit"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ New data detected"
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          CURRENT_TIME=$(date +'%H:%M:%S')
+          
+          # Create descriptive commit message
+          COMMIT_MSG="📰 Daily news update: $CURRENT_DATE $CURRENT_TIME"
+          
+          git commit -m "$COMMIT_MSG" -m "Automated collection of blockchain news headlines" -m "Collection time: ${{ steps.collect.outputs.collection_time }}"
+          
+          # Push with retry logic
+          max_retries=3
+          retry_count=0
+          until git push origin main || [ $retry_count -eq $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            echo "⚠️  Push failed, retrying ($retry_count/$max_retries)..."
+            sleep 5
+            git pull --rebase origin main
+          done
+          
+          if [ $retry_count -eq $max_retries ]; then
+            echo "❌ Failed to push after $max_retries attempts"
+            exit 1
+          fi
+          
+          echo "✅ Successfully committed and pushed changes!"
+      
+      - name: Generate multiple commits (optional)
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.multiple_commits == 'true')
+        run: |
+          # This creates additional commits with different timestamps throughout the day
+          # to make the contribution graph more varied
+          
+          echo "🔄 Generating additional commits for richer contribution graph..."
+          
+          for i in {1..3}; do
+            sleep 10
+            
+            # Create a timestamp file to ensure changes
+            TIMESTAMP_FILE="data/.timestamps/commit_$i.txt"
+            mkdir -p data/.timestamps
+            echo "Commit $i at $(date +'%Y-%m-%d %H:%M:%S UTC')" > "$TIMESTAMP_FILE"
+            
+            git add data/.timestamps/
+            git commit -m "🔄 Activity update #$i" -m "Timestamp: $(date +'%Y-%m-%d %H:%M:%S UTC')"
+            git push origin main
+            
+            echo "✅ Additional commit $i created"
+          done
+      
+      - name: Report status
+        if: always()
+        run: |
+          echo "================================"
+          echo "📊 Workflow Summary"
+          echo "================================"
+          echo "Date: $(date +'%Y-%m-%d')"
+          echo "Time: $(date +'%H:%M:%S UTC')"
+          echo "Changes detected: ${{ steps.check_changes.outputs.has_changes }}"
+          echo "================================"
