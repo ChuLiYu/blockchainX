@@ -231,6 +231,7 @@ class TwitterBotHistory:
     def is_posted(self, article_hash: str) -> bool:
         """Check if article was already posted today (UTC)"""
         from datetime import timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return today in self.history and any(
             item["hash"] == article_hash for item in self.history.get(today, [])
@@ -257,15 +258,17 @@ class TwitterBotHistory:
     def get_today_count(self) -> int:
         """Get number of posts made today (UTC)"""
         from datetime import timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return len(self.history.get(today, []))
 
     def cleanup_old_history(self, days_to_keep: int = 30):
         """Remove history older than specified days (UTC)"""
         from datetime import timezone
-        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days_to_keep)).strftime(
-            "%Y-%m-%d"
-        )
+
+        cutoff_date = (
+            datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+        ).strftime("%Y-%m-%d")
 
         dates_to_remove = [date for date in self.history.keys() if date < cutoff_date]
         for date in dates_to_remove:
@@ -347,6 +350,7 @@ def get_latest_articles(max_articles: int = 5) -> List[Dict]:
         List of article dictionaries
     """
     from datetime import timezone
+
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     data_dir = Path(f"data/{today}")
 
@@ -398,8 +402,9 @@ def get_latest_articles(max_articles: int = 5) -> List[Dict]:
 def main():
     """Main execution function"""
     from datetime import timezone
+
     now_utc = datetime.now(timezone.utc)
-    
+
     print("=" * 60)
     print("🐦 Starting Twitter Bot for Blockchain News")
     print("=" * 60)

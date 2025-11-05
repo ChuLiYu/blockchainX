@@ -47,9 +47,12 @@ htmlcov/
 # Configuration (contains API keys - NEVER COMMIT THIS!)
 config.json
 
-# History files (will be auto-committed by workflows)
-# data/.history.json
-# data/.twitter_history.json
+# Scraped articles data (optional: exclude to save space locally)
+data/*/
+
+# History files (auto-committed by workflows for tracking)
+!data/.history.json
+!data/.twitter_history.json
 
 # macOS hidden files
 .DS_Store
