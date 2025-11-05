@@ -53,16 +53,24 @@ jobs:
           python scraper.py
           echo "collection_time=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
       
-      - name: Check for changes
+      - name: Create activity timestamp for contribution graph
         id: check_changes
         run: |
-          git add data/
+          # Create timestamp file to ensure we have something to commit
+          mkdir -p .github/activity
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          CURRENT_TIME=$(date +'%H:%M:%S')
+          echo "News collection completed at $CURRENT_DATE $CURRENT_TIME UTC" > .github/activity/last-run.txt
+          
+          # Stage history files and timestamp
+          git add data/.history.json data/.twitter_history.json .github/activity/last-run.txt 2>/dev/null || true
+          
           if git diff --staged --quiet; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "ℹ️  No new data to commit"
+            echo "ℹ️  No changes to commit"
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "✅ New data detected"
+            echo "✅ Activity recorded"
           fi
       
       - name: Commit and push changes
@@ -72,9 +80,9 @@ jobs:
           CURRENT_TIME=$(date +'%H:%M:%S')
           
           # Create descriptive commit message
-          COMMIT_MSG="📰 Daily news update: $CURRENT_DATE $CURRENT_TIME"
+          COMMIT_MSG="🤖 Auto-scraper activity: $CURRENT_DATE $CURRENT_TIME"
           
-          git commit -m "$COMMIT_MSG" -m "Automated collection of blockchain news headlines" -m "Collection time: ${{ steps.collect.outputs.collection_time }}"
+          git commit -m "$COMMIT_MSG" -m "Automated news collection completed" -m "Run time: ${{ steps.collect.outputs.collection_time }}"
           
           # Push with retry logic
           max_retries=3
