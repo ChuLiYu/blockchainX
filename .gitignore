@@ -47,8 +47,9 @@ htmlcov/
 # Configuration (contains API keys - NEVER COMMIT THIS!)
 config.json
 
-# Scraped articles data (optional: exclude to save space locally)
-data/*/
+# Scraped articles data (exclude to prevent pulling from GitHub)
+# Ignore all date-based directories (YYYY-MM-DD format)
+data/[0-9][0-9][0-9][0-9]-*/
 
 # History files (auto-committed by workflows for tracking)
 !data/.history.json
