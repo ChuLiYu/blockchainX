@@ -459,6 +459,7 @@ def main():
 
     # Always use UTC to avoid timezone issues between local and GitHub Actions
     from datetime import timezone
+    from article_manager import ArticleManager
 
     now_utc = datetime.now(timezone.utc)
     date_str = now_utc.strftime("%Y-%m-%d")
@@ -469,6 +470,10 @@ def main():
     # Initialize history tracker
     history = ArticleHistory()
     history.cleanup_old_history(days_to_keep=30)
+    
+    # Initialize structured article manager
+    article_manager = ArticleManager()
+    article_manager.cleanup_old_articles(days_to_keep=30)
 
     # Initialize sources
     sources = [
@@ -538,9 +543,13 @@ def main():
                 if idx < len(new_headlines):
                     time.sleep(2)  # 2 second delay
 
-            # Save to Markdown
+            # Save to structured JSON storage (top 3 priority articles)
             if articles_with_content:
-                # Determine run number for today
+                # Add top 3 articles to structured storage
+                top_articles = articles_with_content[:3]  # Only save top 3 priority articles
+                article_manager.add_articles(date_str, top_articles, source.name)
+                
+                # Also save to Markdown for local reference
                 run_number = (
                     len(
                         [
@@ -557,8 +566,9 @@ def main():
                     articles_with_content, source.name, date_str, run_number
                 )
                 print(
-                    f"\n✅ Successfully collected {len(articles_with_content)} articles from {source.name}\n"
+                    f"\n✅ Successfully collected {len(articles_with_content)} articles from {source.name}"
                 )
+                print(f"📊 Top {len(top_articles)} saved to structured storage\n")
             else:
                 print(f"⚠️  No articles collected from {source.name}\n")
                 all_success = False
@@ -576,6 +586,10 @@ def main():
         print(
             f"📊 Total articles collected today: {len(history.history.get(date_str, set()))}"
         )
+        
+        # Show structured storage stats
+        stats = article_manager.get_stats()
+        print(f"📚 Structured storage: {stats['total_articles']} articles across {stats['total_dates']} dates")
     else:
         print("⚠️  Collection completed with some errors")
     print("=" * 60)

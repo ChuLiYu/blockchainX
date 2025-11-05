@@ -51,9 +51,10 @@ config.json
 # Ignore all date-based directories (YYYY-MM-DD format)
 data/[0-9][0-9][0-9][0-9]-*/
 
-# History files (auto-committed by workflows for tracking)
+# Tracking files (auto-committed by workflows)
 !data/.history.json
 !data/.twitter_history.json
+!data/articles.json
 
 # macOS hidden files
 .DS_Store
