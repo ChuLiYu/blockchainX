@@ -229,8 +229,9 @@ class TwitterBotHistory:
             print(f"⚠️  Failed to save history: {e}")
 
     def is_posted(self, article_hash: str) -> bool:
-        """Check if article was already posted"""
-        today = datetime.now().strftime("%Y-%m-%d")
+        """Check if article was already posted today (UTC)"""
+        from datetime import timezone
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return today in self.history and any(
             item["hash"] == article_hash for item in self.history.get(today, [])
         )
@@ -254,13 +255,15 @@ class TwitterBotHistory:
         self._save_history()
 
     def get_today_count(self) -> int:
-        """Get number of posts made today"""
-        today = datetime.now().strftime("%Y-%m-%d")
+        """Get number of posts made today (UTC)"""
+        from datetime import timezone
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         return len(self.history.get(today, []))
 
     def cleanup_old_history(self, days_to_keep: int = 30):
-        """Remove history older than specified days"""
-        cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).strftime(
+        """Remove history older than specified days (UTC)"""
+        from datetime import timezone
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days_to_keep)).strftime(
             "%Y-%m-%d"
         )
 
@@ -335,7 +338,7 @@ def create_tweet_text(
 
 
 def get_latest_articles(max_articles: int = 5) -> List[Dict]:
-    """Get latest unposted articles from data directory
+    """Get latest unposted articles from data directory (UTC)
 
     Args:
         max_articles: Maximum number of articles to retrieve
@@ -343,8 +346,8 @@ def get_latest_articles(max_articles: int = 5) -> List[Dict]:
     Returns:
         List of article dictionaries
     """
-
-    today = datetime.now().strftime("%Y-%m-%d")
+    from datetime import timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     data_dir = Path(f"data/{today}")
 
     if not data_dir.exists():
@@ -394,11 +397,14 @@ def get_latest_articles(max_articles: int = 5) -> List[Dict]:
 
 def main():
     """Main execution function"""
+    from datetime import timezone
+    now_utc = datetime.now(timezone.utc)
+    
     print("=" * 60)
     print("🐦 Starting Twitter Bot for Blockchain News")
     print("=" * 60)
-    print(f"📅 Date: {datetime.now().strftime('%Y-%m-%d')}")
-    print(f"🕐 Time: {datetime.now().strftime('%H:%M:%S')} UTC\n")
+    print(f"📅 Date: {now_utc.strftime('%Y-%m-%d')}")
+    print(f"🕐 Time: {now_utc.strftime('%H:%M:%S')} UTC\n")
 
     # Load configuration
     config = load_config()

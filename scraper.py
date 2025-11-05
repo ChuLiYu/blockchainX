@@ -67,9 +67,9 @@ class ArticleHistory:
         self._save_history()
     
     def cleanup_old_history(self, days_to_keep: int = 30):
-        """Remove history older than specified days"""
-        from datetime import datetime, timedelta
-        cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).strftime('%Y-%m-%d')
+        """Remove history entries older than specified days"""
+        from datetime import datetime, timedelta, timezone
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days_to_keep)).strftime('%Y-%m-%d')
         
         dates_to_remove = [date for date in self.history.keys() if date < cutoff_date]
         for date in dates_to_remove:
@@ -344,8 +344,9 @@ def save_to_markdown(headlines: List[Dict[str, str]], source_name: str, date_str
         with open(filepath, 'r', encoding='utf-8') as f:
             existing_content = f.read()
     
-    # Generate markdown content
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Generate markdown content (always use UTC)
+    from datetime import timezone
+    current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     
     if not existing_content:
         # New file
@@ -397,9 +398,11 @@ def main():
     print("🚀 Starting Blockchain News Collection")
     print("=" * 60)
     
-    # Get current date and time
-    date_str = datetime.now().strftime('%Y-%m-%d')
-    time_str = datetime.now().strftime('%H:%M:%S')
+    # Always use UTC to avoid timezone issues between local and GitHub Actions
+    from datetime import timezone
+    now_utc = datetime.now(timezone.utc)
+    date_str = now_utc.strftime('%Y-%m-%d')
+    time_str = now_utc.strftime('%H:%M:%S')
     print(f"📅 Collection date: {date_str}")
     print(f"🕐 Collection time: {time_str} UTC\n")
     
