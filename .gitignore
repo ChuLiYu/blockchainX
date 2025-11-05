@@ -47,14 +47,17 @@ htmlcov/
 # Configuration (contains API keys - NEVER COMMIT THIS!)
 config.json
 
-# Scraped articles data (exclude to prevent pulling from GitHub)
+# Scraped articles data (exclude markdown files from git)
 # Ignore all date-based directories (YYYY-MM-DD format)
 data/[0-9][0-9][0-9][0-9]-*/
 
 # Tracking files (auto-committed by workflows)
 !data/.history.json
 !data/.twitter_history.json
-!data/articles.json
+
+# Structured articles (date-based JSON files - tracked by git)
+!data/articles/
+!data/articles/**/*.json
 
 # macOS hidden files
 .DS_Store

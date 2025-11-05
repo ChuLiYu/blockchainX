@@ -62,8 +62,8 @@ jobs:
           CURRENT_TIME=$(date +'%H:%M:%S')
           echo "News collection completed at $CURRENT_DATE $CURRENT_TIME UTC" > .github/activity/last-run.txt
 
-          # Stage tracking files: history, structured articles, and timestamp
-          git add data/.history.json data/.twitter_history.json data/articles.json .github/activity/last-run.txt 2>/dev/null || true
+          # Stage tracking files: history, structured articles (date-based), and timestamp
+          git add data/.history.json data/.twitter_history.json data/articles/ .github/activity/last-run.txt 2>/dev/null || true
 
           if git diff --staged --quiet; then
             echo "has_changes=false" >> $GITHUB_OUTPUT

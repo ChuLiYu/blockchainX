@@ -470,7 +470,7 @@ def main():
     # Initialize history tracker
     history = ArticleHistory()
     history.cleanup_old_history(days_to_keep=30)
-    
+
     # Initialize structured article manager
     article_manager = ArticleManager()
     article_manager.cleanup_old_articles(days_to_keep=30)
@@ -546,9 +546,11 @@ def main():
             # Save to structured JSON storage (top 3 priority articles)
             if articles_with_content:
                 # Add top 3 articles to structured storage
-                top_articles = articles_with_content[:3]  # Only save top 3 priority articles
+                top_articles = articles_with_content[
+                    :3
+                ]  # Only save top 3 priority articles
                 article_manager.add_articles(date_str, top_articles, source.name)
-                
+
                 # Also save to Markdown for local reference
                 run_number = (
                     len(
@@ -586,10 +588,12 @@ def main():
         print(
             f"📊 Total articles collected today: {len(history.history.get(date_str, set()))}"
         )
-        
+
         # Show structured storage stats
         stats = article_manager.get_stats()
-        print(f"📚 Structured storage: {stats['total_articles']} articles across {stats['total_dates']} dates")
+        print(
+            f"📚 Structured storage: {stats['total_articles']} articles across {stats['total_dates']} dates"
+        )
     else:
         print("⚠️  Collection completed with some errors")
     print("=" * 60)
