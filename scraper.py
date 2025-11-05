@@ -188,12 +188,12 @@ class CoinDeskSource(NewsSource):
         super().__init__("CoinDesk", "https://www.coindesk.com")
     
     def extract_headlines(self, max_articles: int = 20) -> List[Dict[str, str]]:
-        """Extract top headlines from CoinDesk
+        """Extract top news headlines from CoinDesk (not press releases)
         
         Args:
-            max_articles: Maximum number of articles to extract (for deduplication backup)
+            max_articles: Maximum number of articles to extract
         """
-        print(f"🔍 Fetching headlines from {self.name}...")
+        print(f"🔍 Fetching top news headlines from {self.name}...")
         
         html = self.fetch_page(self.url)
         if not html:
@@ -202,75 +202,104 @@ class CoinDeskSource(NewsSource):
         soup = BeautifulSoup(html, 'html.parser')
         headlines = []
         
-        # Strategy 1: Look for featured articles
-        featured_articles = soup.find_all(['article', 'div'], class_=lambda x: x and any(
-            keyword in x.lower() for keyword in ['card', 'article', 'story', 'post', 'feature']
+        # Strategy 1: Find main news articles (excluding press releases)
+        # Look for article containers with specific patterns
+        article_containers = soup.find_all(['article', 'div'], class_=lambda x: x and any(
+            keyword in x.lower() for keyword in ['article', 'story', 'post']
         ))
         
-        for article in featured_articles[:max_articles]:  # Get more articles for deduplication
+        for container in article_containers[:max_articles * 2]:  # Get extra for filtering
             try:
-                # Find headline
-                headline_elem = article.find(['h1', 'h2', 'h3', 'h4'], class_=lambda x: x and any(
-                    keyword in x.lower() for keyword in ['title', 'heading', 'headline']
-                ))
-                
-                if not headline_elem:
-                    headline_elem = article.find(['h1', 'h2', 'h3', 'h4'])
+                # Find headline (h2, h3, h4 are typical for article titles)
+                headline_elem = container.find(['h2', 'h3', 'h4'])
                 
                 if not headline_elem:
                     continue
                 
                 title = headline_elem.get_text(strip=True)
                 
+                # Filter out press releases and unwanted content
+                if not title or len(title) < 15:
+                    continue
+                    
+                # Skip if it's a press release or promotional content
+                title_lower = title.lower()
+                if any(skip in title_lower for skip in ['press release', 'sponsored', 'advertisement']):
+                    print(f"  ⏭️  Skipping non-news content: {title[:50]}...")
+                    continue
+                
                 # Find link
-                link_elem = headline_elem.find('a') or article.find('a')
+                link_elem = headline_elem.find('a') or container.find('a')
                 if not link_elem or not link_elem.get('href'):
                     continue
                 
                 url = urljoin(self.url, link_elem['href'])
                 
-                # Find summary/description
-                summary_elem = article.find(['p', 'div'], class_=lambda x: x and any(
-                    keyword in x.lower() for keyword in ['description', 'summary', 'excerpt', 'dek']
+                # Skip if URL contains press-release or other non-news paths
+                url_lower = url.lower()
+                if any(skip in url_lower for skip in ['/press-release', '/sponsored', '/advertorial']):
+                    print(f"  ⏭️  Skipping non-news URL: {url}")
+                    continue
+                
+                # Find summary/excerpt
+                summary_elem = container.find('p', class_=lambda x: x and any(
+                    keyword in x.lower() for keyword in ['excerpt', 'summary', 'description', 'dek']
                 ))
                 
                 if not summary_elem:
-                    summary_elem = article.find('p')
+                    # Look for any paragraph in the container
+                    paragraphs = container.find_all('p', limit=3)
+                    for p in paragraphs:
+                        text = p.get_text(strip=True)
+                        if text and len(text) > 30:
+                            summary_elem = p
+                            break
                 
                 summary = summary_elem.get_text(strip=True) if summary_elem else "Summary not available."
                 
-                # Avoid duplicates
-                if title and url and not any(h['title'] == title for h in headlines):
+                # Avoid duplicates in this batch
+                if not any(h['title'] == title for h in headlines):
                     headlines.append({
                         'title': title,
                         'summary': summary,
                         'url': url
                     })
+                    print(f"  ✅ Found: {title[:60]}...")
                 
                 if len(headlines) >= max_articles:
                     break
                     
             except Exception as e:
-                print(f"⚠️  Error parsing article: {e}")
+                print(f"  ⚠️  Error parsing container: {e}")
                 continue
         
-        # Fallback: Try to get any headlines if the above didn't work
+        # Fallback: If still no headlines, try finding standalone headline links
         if not headlines:
-            print("⚠️  Primary extraction failed, trying fallback method...")
-            all_headlines = soup.find_all(['h1', 'h2', 'h3'])
+            print("⚠️  Primary extraction failed, trying fallback...")
             
-            for h in all_headlines[:max_articles]:
+            # Find all h2, h3 headlines with links
+            headline_tags = soup.find_all(['h2', 'h3', 'h4'])
+            
+            for h_tag in headline_tags[:max_articles * 2]:
                 try:
-                    title = h.get_text(strip=True)
-                    link = h.find('a') or h.find_parent('a')
+                    title = h_tag.get_text(strip=True)
+                    link = h_tag.find('a') or h_tag.find_parent('a')
                     
                     if not link or not link.get('href'):
                         continue
                     
                     url = urljoin(self.url, link['href'])
                     
-                    # Skip navigation/footer links
-                    if len(title) < 20 or any(skip in url.lower() for skip in ['#', 'javascript:', 'mailto:']):
+                    # Apply same filters
+                    if len(title) < 15:
+                        continue
+                    
+                    title_lower = title.lower()
+                    url_lower = url.lower()
+                    
+                    if any(skip in title_lower for skip in ['press release', 'sponsored']):
+                        continue
+                    if any(skip in url_lower for skip in ['/press-release', '/sponsored', '#', 'javascript:', 'mailto:']):
                         continue
                     
                     if not any(h['title'] == title for h in headlines):
@@ -279,6 +308,7 @@ class CoinDeskSource(NewsSource):
                             'summary': "Summary not available from homepage.",
                             'url': url
                         })
+                        print(f"  ✅ Found (fallback): {title[:60]}...")
                     
                     if len(headlines) >= max_articles:
                         break
@@ -286,7 +316,11 @@ class CoinDeskSource(NewsSource):
                 except Exception as e:
                     continue
         
-        print(f"✅ Found {len(headlines)} headlines from {self.name}")
+        if headlines:
+            print(f"✅ Successfully found {len(headlines)} news headlines from {self.name}")
+        else:
+            print(f"⚠️  No news headlines found from {self.name}")
+        
         return headlines
 
 
