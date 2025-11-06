@@ -2,10 +2,12 @@ name: Daily Blockchain News Collection
 
 on:
   schedule:
-    # Run at 00:00, 08:00, and 16:00 UTC every day (multiple times for richer contribution graph)
-    - cron: "0 0 * * *" # Midnight UTC
-    - cron: "0 8 * * *" # 8 AM UTC
-    - cron: "0 16 * * *" # 4 PM UTC
+    # Run 5 times daily for richer contribution graph and more article coverage
+    - cron: "0 0 * * *"   # 00:00 UTC (Midnight)
+    - cron: "0 6 * * *"   # 06:00 UTC (Morning)
+    - cron: "0 10 * * *"  # 10:00 UTC (Mid-morning)
+    - cron: "0 14 * * *"  # 14:00 UTC (Afternoon)
+    - cron: "0 20 * * *"  # 20:00 UTC (Evening)
 
   workflow_dispatch: # Allow manual triggering
     inputs:
